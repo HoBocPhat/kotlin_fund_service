@@ -55,6 +55,7 @@ import com.raywenderlich.android.memo.model.TimerState
 import com.raywenderlich.android.memo.services.*
 import com.raywenderlich.android.memo.view_model.MainViewModel
 import java.util.concurrent.TimeUnit
+import javax.naming.Context
 
 
 /**
@@ -81,8 +82,21 @@ class MainActivity : AppCompatActivity() {
 
   // Bound Service
   // TODO: Define musicService variable
-
+  private var musicService = MusicService? = null
   // TODO: Define boundServiceConnection
+  private val boundServiceConnection = object : ServiceConnection {
+    override fun onServiceConnected(className: ComponentName, service: IBinder) {
+      val binder: MusicService.MusicBinder = service as MusicService.MusicBinder
+      musicService = binder.getService()
+      mainViewModel.isMusicServiceBound = true
+    }
+
+    override fun onServiceDisconnected(arg0: ComponentName) {
+      musicService?.runAction(MusicState.STOP)
+      musicService = null
+      mainViewModel.isMusicServiceBound = false
+    }
+  }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     // Switch to AppTheme for displaying the activity
@@ -142,6 +156,7 @@ class MainActivity : AppCompatActivity() {
     super.onStart()
     // bind to service if it isn't bound
     // TODO: Bind to music service
+    if(!mainViewModel.isMusicServiceBound) bindToMusicService()
   }
 
   override fun onDestroy() {
@@ -157,14 +172,20 @@ class MainActivity : AppCompatActivity() {
   // Bound Service Methods
 
   // TODO: Create bindToMusicService()
+  private fun bindToMusicService() {
+    Intent(this, MusicService::class.java).also {
+      bindService(it, boundServiceConnection, Context.BIND_AUTO_CREATE)
+    }
+  }
 
   private fun unbindMusicService() {
     if (mainViewModel.isMusicServiceBound) {
       // stop the audio
       // TODO: Call runAction() from MusicService
-
+      musicService?.runAction(MusicState.STOP)
       // disconnect the service and save state
       // TODO: Call unbindService()
+      unbindMusicService(boundServiceConnection)
 
       mainViewModel.isMusicServiceBound = false
     }
@@ -174,7 +195,7 @@ class MainActivity : AppCompatActivity() {
     if (mainViewModel.isMusicServiceBound) {
 
       // TODO: Call runAction() from MusicService
-
+      musicService?.runAction(state)
       informUser(state)
       enableButtons(state)
     } else {
@@ -185,7 +206,7 @@ class MainActivity : AppCompatActivity() {
   private fun getNameOfSong() {
     val message = if (mainViewModel.isMusicServiceBound) {
       // TODO: Get song title from music service
-      getString(R.string.unknown)
+    musicService?.getNameOfSong() ?: getString(R.string.unknown)
     } else {
       getString(R.string.service_is_not_bound)
     }
@@ -198,6 +219,7 @@ class MainActivity : AppCompatActivity() {
   private fun sendCommandToForegroundService(timerState: TimerState) {
     // TODO: Call starting a foreground service (timer service)
     mainViewModel.isForegroundServiceRunning = timerState != TimerState.STOP
+    ContextCompat.startForegroundService(this, getServiceIntent(timerState))
   }
 
   private fun getServiceIntent(command: TimerState) =

@@ -111,6 +111,10 @@ class TimerService : Service(), CoroutineScope {
     startCoroutineTimer()
   }
 
+  private val helper by lazy { NotificationHelper(this) }
+
+  startForeground(NotificationHelper.NOTIFICATION_ID, helper.getNotification())
+
   private fun broadcastUpdate() {
     // update notification
     if (serviceState == TimerState.START) {
@@ -119,10 +123,12 @@ class TimerService : Service(), CoroutineScope {
 
       // send time to update UI
       // TODO: Send broadcast and call updateNotification
+      sendBroadcast(Intent(TIME_ACTION).putExtra(NOTIFICATION_TEXT, elapsedTime))
+      helper.updateNotification(getString(R.string.time_is_running, elapsedTime.secondsToTime()))
 
     } else if (serviceState == TimerState.PAUSE) {
       // TODO: Call updateNotification if timer is paused
-
+      helper.updateNotification(getString(R.string.get_back))
     }
   }
 
@@ -142,6 +148,8 @@ class TimerService : Service(), CoroutineScope {
 
   private fun stopService() {
     // TODO: Call stopping service
+    stopForeground(true)
+    stopSelf()
   }
 
   private fun startCoroutineTimer() {

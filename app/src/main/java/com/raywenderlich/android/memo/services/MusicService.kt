@@ -41,10 +41,12 @@ import android.os.Binder
 import android.os.IBinder
 import com.raywenderlich.android.memo.R
 import com.raywenderlich.android.memo.model.MusicState
+import java.security.Provider.Service
 import java.util.*
+import java.util.Locale
 
 // TODO: Inherit Service()
-class MusicService {
+class MusicService : Service() {
 
   private var musicState = MusicState.STOP
   private var musicMediaPlayer: MediaPlayer? = null
@@ -55,9 +57,16 @@ class MusicService {
   )
   private var randomSongs = mutableListOf<Int>()
 
+  private val binder by lazy { MusicBinder()}
+
   // TODO: Define MusicBinder() variable
 
+  inner class MusicBinder : Binder() {
+    fun getService(): MusicService = this@MusicService
+  }
+
   // TODO: Add onBind()
+  override fun onBind(intent: Intent?): IBinder = binder
 
   fun runAction(state: MusicState) {
     musicState = state
@@ -71,11 +80,16 @@ class MusicService {
 
   // TODO: Add getNameOfSong()
 
+  fun getNameOfSong() : String = resources.getResourceEntryName(randomSongs.first())
+    .replaceFirstChar { if(it.isLowerCase()) it.titlecase(java.util.Locale.ENGLISH)
+                        else it.toString()}.replace("_", " ")
+
   private fun initializeMediaPlayer() {
     if (randomSongs.isEmpty()) {
       randomizeSongs()
     }
     // TODO: Initialize Media Player
+    musicMediaPlayer = MediaPlayer.create(this, randomSongs.first()).apply {isLooping = true}
   }
 
   private fun startMusic() {
